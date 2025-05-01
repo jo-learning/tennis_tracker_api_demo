@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Game Tracker with Simulation</title>
+  <style>
+    #container {
+      position: relative;
+      display: inline-block;
+      margin-top: 20px;
+    }
+    canvas {
+      border: 1px solid black;
+      background-color: #f8f8f8;
+    }
+    #controls {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>AI Game Tracker with Simulation</h1>
+
+  <input type="file" id="videoInput" accept="video/*">
+  <button onclick="uploadVideo()">Upload & Analyze</button>
+  
+  <div id="controls">
+    <button onclick="simulateGame()">Start Simulation</button>
+  </div>
+
+  <div id="container">
+    <video id="videoPlayer" controls></video>
+    <canvas id="simulationCanvas"></canvas>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:5000/api/track';  // Adjust if needed
+    let trackingData = [];
+    let frameIndex = 0;
+
+    async function uploadVideo() {
+      const input = document.getElementById('videoInput');
+      const file = input.files[0];
+
+      if (!file) {
+        alert("Please select a video file.");
+        return;
+      }
+
+      const videoPlayer = document.getElementById('videoPlayer');
+      videoPlayer.src = URL.createObjectURL(file);
+
+      const formData = new FormData();
+      formData.append('video', file);
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        alert("Upload failed.");
+        return;
+      }
+
+      trackingData = await response.json();
+      videoPlayer.onloadedmetadata = () => {
+        const canvas = document.getElementById('simulationCanvas');
+        canvas.width = videoPlayer.videoWidth;
+        canvas.height = videoPlayer.videoHeight;
+      };
+
+      videoPlayer.ontimeupdate = drawOverlay;  // For real-time tracking display
+    }
+
+    function drawOverlay() {
+      const video = document.getElementById('videoPlayer');
+      const canvas = document.getElementById('simulationCanvas');
+      const ctx = canvas.getContext('2d');
+      const currentTime = video.currentTime;
+
+      // Find the frame nearest to the current time
+      const frameData = trackingData.find(f => Math.abs(f.timestamp - currentTime) < 0.1);
+      if (!frameData) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      frameData.objects.forEach(obj => {
+        const [x1, y1, x2, y2] = obj.bbox;
+        ctx.strokeStyle = obj.label === "person" ? "lime" : "red";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(x1, y1 - 20, 100, 20);
+        ctx.fillStyle = "#fff";
+        ctx.font = "14px Arial";
+        ctx.fillText(`${obj.label} ${(obj.confidence * 100).toFixed(1)}%`, x1 + 5, y1 - 5);
+      });
+    }
+
+    function simulateGame() {
+      if (!trackingData || trackingData.length === 0) {
+        alert("No tracking data available!");
+        return;
+      }
+
+      const canvas = document.getElementById('simulationCanvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Clear the canvas before starting the simulation
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Simulate game frame by frame
+      const simulationInterval = setInterval(() => {
+        if (frameIndex >= trackingData.length) {
+          clearInterval(simulationInterval);
+          return;
+        }
+
+        // Get the frame data
+        const frameData = trackingData[frameIndex];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        frameData.objects.forEach(obj => {
+          const [x1, y1, x2, y2] = obj.bbox;
+          const label = obj.label;
+          ctx.strokeStyle = label === "person" ? "lime" : "red";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+          ctx.fillStyle = "rgba(0,0,0,0.5)";
+          ctx.fillRect(x1, y1 - 20, 100, 20);
+          ctx.fillStyle = "#fff";
+          ctx.font = "14px Arial";
+          ctx.fillText(`${label} ${(obj.confidence * 100).toFixed(1)}%`, x1 + 5, y1 - 5);
+        });
+
+        frameIndex++;  // Move to the next frame
+      }, 1000 / 30);  // 30 FPS simulation speed
+    }
+  </script>
+
+</body>
+</html>
+s

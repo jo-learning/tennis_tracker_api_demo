@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Game Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    video {
+      max-width: 100%;
+      margin-top: 10px;
+    }
+    #results {
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #f4f4f4;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+    #results ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    #results li {
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>AI Game Tracker</h1>
+
+  <input type="file" id="videoInput" accept="video/*">
+  <button onclick="uploadVideo()">Upload & Analyze</button>
+
+  <video id="videoPlayer" controls></video>
+
+  <div id="results">
+    <h3>Detected Events:</h3>
+    <ul id="eventList"></ul>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:5000/api/track';  // Change if hosted elsewhere
+
+    async function uploadVideo() {
+      const input = document.getElementById('videoInput');
+      const file = input.files[0];
+
+      if (!file) {
+        alert("Please select a video file.");
+        return;
+      }
+
+      // Show video
+      const videoPlayer = document.getElementById('videoPlayer');
+      videoPlayer.src = URL.createObjectURL(file);
+
+      // Upload video to API
+      const formData = new FormData();
+      formData.append('video', file);
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        alert("Upload failed.");
+        return;
+      }
+
+      const data = await response.json();
+      showResults(data);
+    }
+
+    function showResults(data) {
+      const list = document.getElementById('eventList');
+      list.innerHTML = ''; // Clear previous
+
+      data.forEach(event => {
+        const time = event.timestamp.toFixed(1);
+        event.objects.forEach(obj => {
+          const li = document.createElement('li');
+          li.textContent = `[${time}s] ${obj.label} (${(obj.confidence * 100).toFixed(1)}%) at [${obj.bbox.join(', ')}]`;
+          list.appendChild(li);
+        });
+      });
+    }
+  </script>
+
+</body>
+</html>

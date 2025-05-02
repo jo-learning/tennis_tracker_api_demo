@@ -37,7 +37,7 @@
     ```
 
 2. **View the Frontend**  
-    Open `font2.html` in your browser to view the front page.
+    Open `font1.html` in your browser to view the front page.
 
 ## Notes
 

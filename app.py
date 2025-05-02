@@ -9,6 +9,10 @@ CORS(app)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+@app.route('/')
+def index():
+    return "Welcome to the Video Tracking API!"
+
 @app.route('/api/track', methods=['POST'])
 def track():
     if 'video' not in request.files:
